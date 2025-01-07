@@ -1,13 +1,11 @@
 import os
 import openai
 from flask import Flask, request, jsonify
+from google.cloud import secretmanager
 from functools import wraps
 
 # Flask app setup
 app = Flask(__name__)
-
-# OpenAI API key (set this as an environment variable in Google Cloud)
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Allowed frontend origin
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "https://your-frontend-url.com")
@@ -33,7 +31,24 @@ EXPECTED_TOPICS = [
     "wellness strategies"
 ]
 
-openai.api_key = OPENAI_API_KEY
+# Fetch OpenAI API key from Google Cloud Secret Manager
+def get_secret(secret_name, project_id):
+    client = secretmanager.SecretManagerServiceClient()
+    secret_path = f"projects/{project_id}/secrets/{secret_name}/versions/latest"
+    response = client.access_secret_version(name=secret_path)
+    return response.payload.data.decode("UTF-8")
+
+# Set project ID and secret name
+PROJECT_ID = os.getenv("GCP_PROJECT_ID", "your-google-cloud-project-id")
+OPENAI_SECRET_NAME = os.getenv("OPENAI_SECRET_NAME", "openai-api-key")
+
+# Retrieve OpenAI API key from Secret Manager
+try:
+    OPENAI_API_KEY = get_secret(OPENAI_SECRET_NAME, PROJECT_ID)
+    openai.api_key = OPENAI_API_KEY
+except Exception as e:
+    OPENAI_API_KEY = None
+    print(f"Error accessing OpenAI API key: {e}")
 
 # Helper decorator to check CORS and enforce allowed origin
 def cors_and_origin_check(f):
