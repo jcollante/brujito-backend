@@ -15,9 +15,9 @@ backend-proyecto que se conecta con chatgpt for chatbot para dar una respuesta
 2. **Google Cloud Project**:
    - Set the active project for deployment:
      ```bash
-     gcloud config set project YOUR_PROJECT_ID
+     gcloud config set project brujitos-chatbot
      ```
-   - Replace `YOUR_PROJECT_ID` with your Google Cloud project ID.
+   - Replace `brujitos-chatbot` with your Google Cloud project ID.
 
 3. **Enable Required APIs**:
    - Enable Cloud Functions:
@@ -26,7 +26,7 @@ backend-proyecto que se conecta con chatgpt for chatbot para dar una respuesta
      ```
    - Enable Secret Manager:
      ```bash
-     gcloud services enable secretmanager.googleapis.com
+     gcloud services enable secretmanager.googleapis.com --project=brujitos-chatbot
      ```
 
 4. **Prepare Secrets in Secret Manager**:
@@ -37,9 +37,7 @@ backend-proyecto que se conecta con chatgpt for chatbot para dar una respuesta
    - Replace `YOUR_OPENAI_API_KEY` with your actual OpenAI API key.
    - Grant access to the Cloud Function’s service account:
      ```bash
-     gcloud secrets add-iam-policy-binding openai-api-key \
-         --member="serviceAccount:YOUR_PROJECT_ID@appspot.gserviceaccount.com" \
-         --role="roles/secretmanager.secretAccessor"
+     gcloud secrets add-iam-policy-binding openai-api-key --member="serviceAccount:brujitos-chatbot@appspot.gserviceaccount.com" --role="roles/secretmanager.secretAccessor"
      ```
 
 ---
@@ -53,6 +51,10 @@ Ensure your code files are organized as follows:
 
 ## Deployment Command
 
+```bash
+gcloud services enable cloudbuild.googleapis.com --project=brujitos-chatbot
+```
+
 Run the following `gcloud` command to deploy the function:
 
 ```bash
@@ -60,15 +62,17 @@ gcloud functions deploy chatgpt-api-backend \
     --runtime python310 \
     --trigger-http \
     --allow-unauthenticated \
-    --entry-point app \
-    --region YOUR_REGION \
-    --set-env-vars GCP_PROJECT_ID=YOUR_PROJECT_ID,OPENAI_SECRET_NAME=openai-api-key
+    --entry-point main \
+    --region europe-west3 \
+    --no-gen2 \
+    --set-env-vars GCP_PROJECT_ID=brujitos-chatbot,OPENAI_SECRET_NAME=openai-api-key
+```
 
 Replace:
 chatgpt-api-backend: The name of your function.
 python310: The runtime version for Python (adjust if needed).
 YOUR_REGION: The region where you want to deploy the function (e.g., us-central1).
-YOUR_PROJECT_ID: Your Google Cloud project ID.
+brujitos-chatbot: Your Google Cloud project ID.
 
 
 Post-Deployment
@@ -76,15 +80,15 @@ Get the Function URL:
 
 After deployment, the command will output the URL of your function. It will look something like:
 arduino
-Code kopieren
 https://REGION-PROJECT_ID.cloudfunctions.net/chatgpt-api-backend
 Test the API:
 
 Use tools like curl, Postman, or your frontend to send requests to the function URL. For example:
 bash
 Code kopieren
-curl -X POST https://REGION-PROJECT_ID.cloudfunctions.net/chatgpt-api-backend \
+curl -X POST https://europe-west3-brujitos-chatbot.cloudfunctions.net/chatgpt-api-backend/chat \
     -H "Content-Type: application/json" \
+    -H "Origin: https://reqbin.com/curl" \
     -d '{"message": "How can I manage stress?"}'
 Monitor Logs:
 

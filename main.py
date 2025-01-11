@@ -1,5 +1,6 @@
 import os
 import openai
+from openai import OpenAI
 from flask import Flask, request, jsonify
 from google.cloud import secretmanager
 from functools import wraps
@@ -8,7 +9,7 @@ from functools import wraps
 app = Flask(__name__)
 
 # Allowed frontend origin
-ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "https://your-frontend-url.com")
+ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "https://reqbin.com/curl")
 
 # Define prohibited topics or keywords
 PROHIBITED_TOPICS = [
@@ -45,7 +46,7 @@ OPENAI_SECRET_NAME = os.getenv("OPENAI_SECRET_NAME", "openai-api-key")
 # Retrieve OpenAI API key from Secret Manager
 try:
     OPENAI_API_KEY = get_secret(OPENAI_SECRET_NAME, PROJECT_ID)
-    openai.api_key = OPENAI_API_KEY
+    # openai.api_key = OPENAI_API_KEY
 except Exception as e:
     OPENAI_API_KEY = None
     print(f"Error accessing OpenAI API key: {e}")
@@ -105,21 +106,22 @@ def chat():
         }), 400
 
     # Check if the query aligns with expected topics
-    if not aligns_with_expected_topics(message):
-        return jsonify({
-            "error": "Your message does not align with the chatbot's expected topics. Please ask about fitness, nutrition, mental health, or wellness strategies."
-        }), 400
+    # if not aligns_with_expected_topics(message):
+    #     return jsonify({
+    #         "error": "Your message does not align with the chatbot's expected topics. Please ask about fitness, nutrition, mental health, or wellness strategies."
+    #     }), 400
 
     # Make OpenAI ChatGPT API call with context
     try:
-        response = openai.ChatCompletion.create(
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        response = client.chat.completions.create(
             model="gpt-4",  # Specify the desired model
             messages=[
                 {"role": "system", "content": CONTEXT},
                 {"role": "user", "content": message}
             ],
         )
-        chat_response = response['choices'][0]['message']['content']
+        chat_response = client.choices[0].message.content
         return jsonify({"response": chat_response})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -129,6 +131,10 @@ def chat():
 def health_check():
     return jsonify({"status": "healthy"}), 200
 
-if __name__ == '__main__':
-    # Flask app runs only locally, use Google Cloud Functions for deployment
-    app.run(host='0.0.0.0', port=8080)
+@app.route("/")
+def hello():
+    return "Hello World!" 
+
+# Entry point for Google Cloud Functions
+def main(request):
+    return app(request.environ, start_response=lambda *args: None)
