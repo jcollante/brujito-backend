@@ -4,6 +4,9 @@ from openai import OpenAI
 from flask import Flask, request, jsonify
 from google.cloud import secretmanager
 from functools import wraps
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Flask app setup
 app = Flask(__name__)
@@ -45,7 +48,9 @@ OPENAI_SECRET_NAME = os.getenv("OPENAI_SECRET_NAME", "openai-api-key")
 
 # Retrieve OpenAI API key from Secret Manager
 try:
-    OPENAI_API_KEY = get_secret(OPENAI_SECRET_NAME, PROJECT_ID)
+    OPENAI_API_KEY = os.getenv('OPENAI_SECRET_NAME')
+    if not OPENAI_API_KEY:
+        OPENAI_API_KEY = get_secret(OPENAI_SECRET_NAME, PROJECT_ID)
     # openai.api_key = OPENAI_API_KEY
 except Exception as e:
     OPENAI_API_KEY = None
@@ -121,7 +126,7 @@ def chat():
                 {"role": "user", "content": message}
             ],
         )
-        chat_response = client.choices[0].message.content
+        chat_response = response.choices[0].message.content
         return jsonify({"response": chat_response})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -138,3 +143,7 @@ def hello():
 # Entry point for Google Cloud Functions
 def main(request):
     return app(request.environ, start_response=lambda *args: None)
+
+# Run locally
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=8080, debug=True)
